@@ -5,58 +5,14 @@ const app = express();
 const bodyParser = require('body-parser');
 app.use(bodyParser.json());
 
-const expressSession = require('express-session');
-
-app.use(expressSession({
-    name: 'kmpSessionCookie',
-    secret: 'express session secret',
-    resave: false,
-    saveUninitialized: false
-}));
-
 const Secret = require("./Secret.js");
 
-const login_data = require('data-store')({ path: process.cwd() + '/data/users.json' });
-
-app.post('/login', (req, res) => {
-    delete req.session.user;
-
-    let user = req.body.login;
-    let password = req.body.password;
-
-    console.log(user);
-    console.log(password);
-
-    let user_data = login_data.get(user);
-    if (user_data.password == password) {
-        req.session.user = user;
-        res.json(true);
-        return;
-    }
-
-    res.status(403).send("Unauthorized");
-});
-
-app.get('/logout', (req, res) => {
-    delete req.session.user;
-    res.json(true);
-});
-
 app.get('/secret', (req, res) => {
-    if (req.session.user == undefined) {
-        res.status(403).send("Unauthorized");
-        return;
-    }
-    res.json(Secret.getAllIDsForOwner(req.session.user));
+    res.json(Secret.getAllIDs());
     return;
 });
 
 app.get('/secret/:id', (req, res) => {
-    if (req.session.user == undefined) {
-        res.status(403).send("Unauthorized");
-        return;
-    }
-
     let s = Secret.findByID(req.params.id);
 
     if (s == null) {
@@ -64,21 +20,11 @@ app.get('/secret/:id', (req, res) => {
         return;
     }
 
-    if (s.owner != req.session.user) {
-        res.status(403).send("Unauthorized");
-        return;
-    }
-
     res.json(s);
 } );
 
 app.post('/secret', (req, res)=> {
-    if (req.session.user == undefined) {
-        res.status(403).send("Unauthorized");
-        return;
-    }
-
-    let s = Secret.create(req.session.user, req.body.secret);
+    let s = Secret.create(req.body.secret);
     if (s == null) {
         res.status(400).send("Bad Request");
         return;
@@ -87,40 +33,20 @@ app.post('/secret', (req, res)=> {
 });
 
 app.put('/secret/:id', (req, res) => {
-    if (req.session.user == undefined) {
-        res.status(403).send("Unauthorized");
-        return;
-    }
-
     let s = Secret.findByID(req.params.id);
     if (s == null) {
         res.status(404).send("Not found");
         return;
     }
-
-    if (s.owner != req.session.user) {
-        res.status(403).send("Unauthorized");
-        return;
-    }
-
     s.update(req.body.secret);
 
     res.json(s.id);
 });
 
 app.delete('/secret/:id', (req, res) => {
-    if (req.session.user == undefined) {
-        res.status(403).send("Unauthorized");
-        return;
-    }
-
     let s = Secret.findByID(req.params.id);
     if (s == null) {
         res.status(404).send("Not found");
-        return;
-    }
-    if (s.owner != req.session.user) {
-        res.status(403).send("Unauthorized");
         return;
     }
 
